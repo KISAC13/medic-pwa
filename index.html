@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Medic">
+  <title>Medic — Milsim</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      color: #ddd;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: row;
+    }
+
+    /* ── Colonne gauche ── */
+    #col-left {
+      width: 190px;
+      min-width: 190px;
+      background: #1a1a1a;
+      border-right: 1px solid #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 10px;
+      gap: 8px;
+    }
+
+    .app-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #E24B4A;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0 2px 8px;
+      border-bottom: 1px solid #2a2a2a;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .app-title svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    .zone-label {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0 2px;
+    }
+
+    .zone-btn {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 12px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.1s, border-color 0.1s;
+      touch-action: manipulation;
+    }
+    .zone-btn:active { transform: scale(0.97); background: #2a2a2a; }
+    .zone-btn.sel { background: #1c2a1c; border-color: #639922; }
+
+    .zone-emoji { font-size: 22px; flex-shrink: 0; line-height: 1; }
+    .zone-name { font-size: 13px; font-weight: 500; color: #ddd; display: block; }
+    .zone-sub { font-size: 10px; color: #666; display: block; }
+
+    #go-btn {
+      margin-top: auto;
+      background: #E24B4A;
+      border: none;
+      border-radius: 10px;
+      padding: 15px 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      width: 100%;
+    }
+    #go-btn:disabled { background: #2a2a2a; color: #444; cursor: not-allowed; }
+    #go-btn:not(:disabled):active { background: #A32D2D; transform: scale(0.98); }
+    #go-btn svg { width: 18px; height: 18px; }
+
+    /* ── Colonne droite ── */
+    #col-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 16px 12px;
+      overflow-y: auto;
+    }
+
+    #idle {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #333;
+    }
+    #idle svg { width: 44px; height: 44px; }
+    #idle p { font-size: 13px; color: #444; text-align: center; line-height: 1.5; }
+
+    #result-box { display: none; flex-direction: column; flex: 1; gap: 10px; }
+    #result-box.show { display: flex; }
+
+    .res-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .res-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.04em; }
+
+    #res-reset {
+      background: transparent;
+      border: 1px solid #333;
+      border-radius: 7px;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #555;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #res-reset:active { background: #1a1a1a; }
+    #res-reset svg { width: 12px; height: 12px; }
+
+    .res-title { font-size: 26px; font-weight: 500; line-height: 1.1; }
+    .res-zone { font-size: 12px; margin-top: 2px; }
+    .res-divider { height: 1px; background: #222; }
+    .res-steps-label { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; }
+
+    .steps-list { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; list-style: none; padding: 0; }
+    .step-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.4; }
+    .step-num { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
+
+    /* Thèmes */
+    .t-hemo .res-badge { background: #791F1F; color: #F7C1C1; }
+    .t-hemo .res-title { color: #E24B4A; }
+    .t-hemo .res-zone { color: #A32D2D; }
+    .t-hemo .res-steps-label { color: #A32D2D; }
+    .t-hemo .step-num { background: #791F1F; color: #F7C1C1; }
+    .t-hemo .step-item { color: #ccc; }
+
+    .t-frac .res-badge { background: #633806; color: #FAC775; }
+    .t-frac .res-title { color: #EF9F27; }
+    .t-frac .res-zone { color: #854F0B; }
+    .t-frac .res-steps-label { color: #854F0B; }
+    .t-frac .step-num { background: #633806; color: #FAC775; }
+    .t-frac .step-item { color: #ccc; }
+
+    .t-pneu .res-badge { background: #0C447C; color: #B5D4F4; }
+    .t-pneu .res-title { color: #378ADD; }
+    .t-pneu .res-zone { color: #185FA5; }
+    .t-pneu .res-steps-label { color: #185FA5; }
+    .t-pneu .step-num { background: #0C447C; color: #B5D4F4; }
+    .t-pneu .step-item { color: #ccc; }
+
+    .t-card .res-badge { background: #3C3489; color: #CECBF6; }
+    .t-card .res-title { color: #7F77DD; }
+    .t-card .res-zone { color: #534AB7; }
+    .t-card .res-steps-label { color: #534AB7; }
+    .t-card .step-num { background: #3C3489; color: #CECBF6; }
+    .t-card .step-item { color: #ccc; }
+
+    /* Timer */
+    #timer-block {
+      background: #1a1a1a;
+      border: 1px solid #3C3489;
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+    #timer-block.show { display: flex; }
+    #timer-digits { font-size: 24px; font-weight: 500; color: #7F77DD; min-width: 56px; font-variant-numeric: tabular-nums; }
+    #timer-sublabel { font-size: 11px; color: #534AB7; margin-top: 2px; }
+    .timer-bar-wrap { flex: 1; height: 6px; background: #2a2a2a; border-radius: 99px; overflow: hidden; }
+    #timer-bar { height: 6px; background: #7F77DD; border-radius: 99px; width: 100%; transition: width 0.5s linear, background 0.5s; }
+
+    /* Verdict */
+    #verdict { display: none; border-radius: 10px; padding: 14px 12px; text-align: center; flex-direction: column; align-items: center; gap: 6px; }
+    #verdict.show { display: flex; }
+    #verdict.alive { background: #0D2A0D; border: 1px solid #3B6D11; }
+    #verdict.dead { background: #1a0d0d; border: 1px solid #791F1F; }
+    #verdict svg { width: 30px; height: 30px; }
+    .verdict-title { font-size: 19px; font-weight: 500; }
+    #verdict.alive .verdict-title { color: #97C459; }
+    #verdict.dead .verdict-title { color: #E24B4A; }
+    .verdict-sub { font-size: 12px; }
+    #verdict.alive .verdict-sub { color: #3B6D11; }
+    #verdict.dead .verdict-sub { color: #A32D2D; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="col-left">
+    <div class="app-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21C12 21 4 13.5 4 8.5C4 5.42 6.42 3 9.5 3C11.04 3 12.42 3.62 13.44 4.62L12 6L10.56 4.62C9.54 3.62 8.16 3 6.5 3"/><path d="M12 21C12 21 20 13.5 20 8.5C20 5.42 17.58 3 14.5 3C12.96 3 11.58 3.62 10.56 4.62"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="12" y1="6" x2="12" y2="12"/></svg>
+      Medic Milsim
+    </div>
+
+    <p class="zone-label">Zone touchée</p>
+
+    <button class="zone-btn" id="btn-bras" onclick="sel('bras')">
+      <span class="zone-emoji">💪</span>
+      <span><span class="zone-name">Bras</span><span class="zone-sub">membre sup.</span></span>
+    </button>
+    <button class="zone-btn" id="btn-jambe" onclick="sel('jambe')">
+      <span class="zone-emoji">🦵</span>
+      <span><span class="zone-name">Jambe</span><span class="zone-sub">membre inf.</span></span>
+    </button>
+    <button class="zone-btn" id="btn-buste" onclick="sel('buste')">
+      <span class="zone-emoji">🫁</span>
+      <span><span class="zone-name">Buste</span><span class="zone-sub">torse / poitrine</span></span>
+    </button>
+    <button class="zone-btn" id="btn-dos" onclick="sel('dos')">
+      <span class="zone-emoji">🫀</span>
+      <span><span class="zone-name">Dos</span><span class="zone-sub">région dorsale</span></span>
+    </button>
+
+    <button id="go-btn" onclick="diagnose()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      Analyser
+    </button>
+  </div>
+
+  <div id="col-right">
+    <div id="idle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+      <p>Sélectionne une zone<br>puis appuie sur Analyser</p>
+    </div>
+
+    <div id="result-box">
+      <div class="res-top">
+        <span class="res-badge" id="res-badge"></span>
+        <button id="res-reset" onclick="reset(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset
+        </button>
+      </div>
+      <div class="res-title" id="res-title"></div>
+      <div class="res-zone" id="res-zone"></div>
+      <div class="res-divider"></div>
+      <div class="res-steps-label">Protocole de soin</div>
+      <ul class="steps-list" id="steps-list"></ul>
+
+      <div id="timer-block">
+        <div>
+          <div id="timer-digits">3:00</div>
+          <div id="timer-sublabel">MCE en cours…</div>
+        </div>
+        <div class="timer-bar-wrap"><div id="timer-bar"></div></div>
+      </div>
+
+      <div id="verdict">
+        <svg id="verdict-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+        <div class="verdict-title" id="verdict-title"></div>
+        <div class="verdict-sub" id="verdict-sub"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ZONES={
+  bras:{label:'Bras (membre supérieur)',type:'membre'},
+  jambe:{label:'Jambe (membre inférieur)',type:'membre'},
+  buste:{label:'Buste / Poitrine',type:'tronc'},
+  dos:{label:'Dos / Région dorsale',type:'tronc'},
+};
+const BLESSURES={
+  membre:[
+    {key:'hemo',theme:'t-hemo',badge:'Blessure courante',label:'Hémorragie',prob:0.90,steps:["Poser un garrot au-dessus de la blessure","Noter l'heure de pose du garrot","Comprimer la plaie si garrot non applicable","Surveiller les signes vitaux","Évacuer vers le medic supérieur"]},
+    {key:'frac',theme:'t-frac',badge:'Blessure rare',label:'Fracture',prob:0.10,steps:["Immobiliser le membre avec une attelle","Ne pas tenter de remettre en place","Vérifier la circulation distale (pouls)","Soutenir et stabiliser le blessé","Évacuer vers le medic supérieur"]},
+  ],
+  tronc:[
+    {key:'hemo',theme:'t-hemo',badge:'Blessure courante',label:'Hémorragie',prob:0.80,steps:["Packing de la plaie avec compresse hémostatique","Maintenir une pression ferme et continue","Surveiller saturation et fréquence cardiaque","Ne pas retirer si la compresse se sature","Évacuation d'urgence immédiate"]},
+    {key:'pneu',theme:'t-pneu',badge:'Blessure grave',label:'Pneumothorax',prob:0.15,steps:["Identifier : respiration difficile, douleur thoracique","Appliquer pansement thoracique occlusif (valve)","Placer le blessé en position semi-assise","Surveiller la détresse respiratoire","Évacuation d'urgence immédiate"]},
+    {key:'card',theme:'t-card',badge:'⚠ Urgence absolue',label:'Arrêt cardiaque',prob:0.05,steps:["Vérifier conscience et respiration","Déclencher l'alerte équipe immédiatement","Commencer le MCE (massage cardiaque externe)","30 compressions / 2 insufflations","Maintenir jusqu'au verdict — 3 minutes"]},
+  ],
+};
+
+let zone=null, timerInterval=null;
+
+function sel(z){
+  zone=z;
+  document.querySelectorAll('.zone-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('btn-'+z).classList.add('sel');
+  document.getElementById('go-btn').disabled=false;
+  reset(false);
+}
+
+function diagnose(){
+  if(!zone)return;
+  const bl=BLESSURES[ZONES[zone].type];
+  const r=Math.random();
+  let cum=0,chosen=null;
+  for(const b of bl){cum+=b.prob;if(r<=cum){chosen=b;break;}}
+  if(!chosen)chosen=bl[bl.length-1];
+
+  document.getElementById('idle').style.display='none';
+  const box=document.getElementById('result-box');
+  box.className='show '+chosen.theme;
+  document.getElementById('res-badge').textContent=chosen.badge;
+  document.getElementById('res-title').textContent=chosen.label;
+  document.getElementById('res-zone').textContent='Zone : '+ZONES[zone].label;
+
+  const ul=document.getElementById('steps-list');
+  ul.innerHTML='';
+  chosen.steps.forEach((s,i)=>{
+    const li=document.createElement('li');
+    li.className='step-item';
+    li.innerHTML=`<span class="step-num">${i+1}</span><span>${s}</span>`;
+    ul.appendChild(li);
+  });
+
+  document.getElementById('timer-block').classList.remove('show');
+  document.getElementById('verdict').className='';
+  document.getElementById('verdict').style.display='none';
+  clearInterval(timerInterval);
+
+  if(chosen.key==='card') startTimer();
+}
+
+function startTimer(){
+  const DURATION=180;
+  let remaining=DURATION;
+  const survive=Math.random()<0.5;
+  const tb=document.getElementById('timer-block');
+  tb.classList.add('show');
+  updateTimer(remaining, DURATION);
+
+  timerInterval=setInterval(()=>{
+    remaining--;
+    updateTimer(remaining, DURATION);
+    if(remaining<=0){
+      clearInterval(timerInterval);
+      tb.classList.remove('show');
+      showVerdict(survive);
+    }
+  },1000);
+}
+
+function updateTimer(remaining, total){
+  const m=Math.floor(remaining/60);
+  const s=remaining%60;
+  document.getElementById('timer-digits').textContent=m+':'+(s<10?'0':'')+s;
+  const pct=remaining/total*100;
+  const bar=document.getElementById('timer-bar');
+  bar.style.width=pct+'%';
+  if(pct>50) bar.style.background='#7F77DD';
+  else if(pct>20) bar.style.background='#EF9F27';
+  else bar.style.background='#E24B4A';
+}
+
+function showVerdict(alive){
+  const v=document.getElementById('verdict');
+  v.style.display='flex';
+  if(alive){
+    v.className='show alive';
+    document.getElementById('verdict-icon').innerHTML='<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>';
+    document.getElementById('verdict-icon').style.color='#97C459';
+    document.getElementById('verdict-title').textContent='Blessé sauvé';
+    document.getElementById('verdict-sub').textContent='Le MCE a fonctionné — évacuation immédiate';
+  } else {
+    v.className='show dead';
+    document.getElementById('verdict-icon').innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+    document.getElementById('verdict-icon').style.color='#E24B4A';
+    document.getElementById('verdict-title').textContent='Blessé décédé';
+    document.getElementById('verdict-sub').textContent='Malgré le MCE — arrêt impossible à réverser';
+  }
+}
+
+function reset(full=true){
+  clearInterval(timerInterval);
+  document.getElementById('idle').style.display='flex';
+  document.getElementById('result-box').className='';
+  document.getElementById('timer-block').classList.remove('show');
+  document.getElementById('verdict').className='';
+  document.getElementById('verdict').style.display='none';
+  if(full){
+    zone=null;
+    document.querySelectorAll('.zone-btn').forEach(b=>b.classList.remove('sel'));
+    document.getElementById('go-btn').disabled=true;
+  }
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
